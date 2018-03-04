@@ -1,21 +1,19 @@
+const numLine = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 module.exports = function solveSudoku(matrix) {
-
   let squares = [];
 
   // вычислим все 9 квадратов
   for (let x = 0; x < 9; x += 3) {
     for (let i = 0; i < 9; i += 3) {
-      let arr = [];
+      let numLine = [];
       for (let j = x; j < x + 3; j++) {
         for (let k = i; k < i + 3; k++) {
-          arr.push(matrix[j][k]);
+          numLine.push(matrix[j][k]);
         }
       }
-      squares.push(arr);
+      squares.push(numLine);
     }
   }
-
-  const arr = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
   class Candidates {
     constructor(row, col) {
@@ -26,32 +24,17 @@ module.exports = function solveSudoku(matrix) {
 
      getMissedInRow() {
        let newRow = this.getRowByRowNumber(this.row);
-       let missRow = [];
-       newRow.sort((a, b) => a - b);
-       arr.map((el) => {
-         if (!newRow.includes(el)) missRow.push(el);
-       });
-       return missRow; // кандидаты по строке
+       return filterNumbers(newRow); // кандидаты по строке
      }
 
      getMissedInColumn() {
-       let newCol = this.getColumnArrByColumnNumber(this.col);;
-       newCol.sort((a, b) => a - b);
-       let missCol = [];
-       arr.map((el) => {
-         if (!newCol.includes(el)) missCol.push(el);
-       });
-       return missCol; // кандидаты по столбцу
+       let newCol = this.getColumnArrByColumnNumber(this.col);
+       return filterNumbers(newCol); // кандидаты по столбцу
      }
 
      getMissedInSquare() {
        let newSq = this.getSquare(this.row, this.col);
-       newSq.sort((a, b) => a - b);
-       let missSq = [];
-       arr.map((el) => {
-         if (!newSq.includes(el)) missSq.push(el);
-       })
-       return missSq; // кандидаты по квадрату
+       return filterNumbers(newSq); // кандидаты по квадрату
      }
 
      getSquare(row, col) {
@@ -92,12 +75,8 @@ module.exports = function solveSudoku(matrix) {
        const missRow = this.getMissedInRow();
        const missCol = this.getMissedInColumn();
        const missSq = this.getMissedInSquare();
-       let candidates = [...missRow, ...missCol, ...missSq];
-       let crossCount = {};
        let result = [];
-       candidates.map(el => {
-         crossCount[el] ? crossCount[el] += 1 : crossCount[el] = 1;
-       });
+       let crossCount = getCrosses([...missRow, ...missCol, ...missSq]);
        for (el in crossCount) {
          if (crossCount[el] === 3) result.push(+el);
        }
@@ -105,35 +84,118 @@ module.exports = function solveSudoku(matrix) {
      }
   }
 
-  console.log('matrix', matrix);
-  matrix = fillOnes(matrix);
+  fillOnes(matrix);
+  fillHidden(matrix);
+  fillOnes(matrix);
   // вычисление кандидатов
   function fillOnes(mtrx) {
-    let newMatrix = mtrx;
     let cand = []; // массив со свободными ячейками и кандидатами в них
     for (let i = 0; i < 9; i++) {
       for (let j = 0; j < 9; j++) {
-        if (newMatrix[i][j] === 0) cand.push(new Candidates(i, j));
+        if (mtrx[i][j] === 0) cand.push(new Candidates(i, j));
       }
     }
     for (el of cand) {
       el.getCandidates();
     }
+    console.log(cand);
+    let f = false;
     for (el of cand) {
       if (el.candidates.length === 1) {
-        newMatrix[el.row][el.col] = el.candidates[0];
+        mtrx[el.row][el.col] = el.candidates[0];
+        // console.log(el.getSquare(el.row, el.col));
+        f = true;
       }
     }
-    console.log(cand);
-    console.log(newMatrix[0] === mtrx[0]);
-    if (newMatrix != mtrx) {
-      fillOnes(newMatrix);
-    } else return newMatrix;
+    if (f) {
+      fillOnes(mtrx);
+    } else {
+      matrix = mtrx;
+    }
+  }
+
+  function fillHidden(mtrx) {
+    let cand = []; // массив со свободными ячейками и кандидатами в них
+    for (let i = 0; i < 9; i++) {
+      for (let j = 0; j < 9; j++) {
+        if (mtrx[i][j] === 0) cand.push(new Candidates(i, j));
+      }
+    }
+    for (el of cand) {
+      el.getCandidates();
+    }
+    for (let i = 0; i < 9; i++) {
+      let match = matchInRow(cand, i);
+      console.log(match);
+      if (isNaN(match)) mtrx[match[0]][match[1]] = match[2];
+    }
+    for (let i = 0; i < 9; i++) {
+      let match = matchInColumn(cand, i);
+      console.log(match);
+      if (isNaN(match)) mtrx[match[0]][match[1]] = match[2];
+    }
   }
 
 
-// console.log(cand);
-console.log(matrix);
-// row - индекс массива
-// col - индекс элемента в массиве
+console.log('matrix_after', matrix);
+
+}
+
+function matchInRow(cand, row) {
+  let arr = [];
+  cand.map(el => {
+    if (el.row === row) arr.push(...el.candidates);
+  });
+  let crossCount = getCrosses(arr);
+  let match = [];
+  for (el in crossCount) {
+    if (crossCount[el] === 1) match.push(el);
+  }
+  let x = [];
+  if (!isNaN(match)) {
+    cand.map((el) => {
+      if (el.row === row && el.candidates.includes(+match)) x = [el.row, el.col, +match];
+    })
+  }
+  return x;
+}
+
+function matchInColumn(cand, col) {
+  let arr = [];
+  cand.map(el => {
+    if (el.col === col) arr.push(...el.candidates);
+  });
+  let crossCount = getCrosses(arr);
+  let match = [];
+  for (el in crossCount) {
+    if (crossCount[el] === 1) match.push(el);
+  }
+  let x = [];
+  if (!isNaN(match)) {
+    cand.map((el) => {
+      if (el.col === col && el.candidates.includes(+match)) x = [el.row, el.col, +match];
+    })
+  }
+  return x;
+}
+
+function filterNumbers(arrToFilter) {
+  arrToFilter.sort(compare);
+  let missedNumbers = [];
+  numLine.map((el) => {
+    if (!arrToFilter.includes(el)) missedNumbers.push(el);
+  })
+  return missedNumbers;
+}
+
+function getCrosses(arr) {
+  let crossCount = {};
+  arr.map(el => {
+    crossCount[el] ? crossCount[el] += 1 : crossCount[el] = 1;
+  });
+  return crossCount;
+}
+
+function compare(a, b) {
+  return a - b;
 }
