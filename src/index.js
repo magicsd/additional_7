@@ -98,7 +98,7 @@ module.exports = function solveSudoku(matrix) {
     for (el of cand) {
       el.getCandidates();
     }
-    console.log(cand);
+    // console.log(cand);
     let f = false;
     for (el of cand) {
       if (el.candidates.length === 1) {
@@ -126,18 +126,18 @@ module.exports = function solveSudoku(matrix) {
     }
     for (let i = 0; i < 9; i++) {
       let match = matchInRow(cand, i);
-      console.log(match);
+      // console.log(match);
       if (isNaN(match)) mtrx[match[0]][match[1]] = match[2];
     }
     for (let i = 0; i < 9; i++) {
       let match = matchInColumn(cand, i);
-      console.log(match);
+      // console.log(match);
       if (isNaN(match)) mtrx[match[0]][match[1]] = match[2];
     }
   }
 
 
-console.log('matrix_after', matrix);
+return matrix;
 
 }
 
